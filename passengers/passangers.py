@@ -7,7 +7,7 @@ def passenger(data, event, person):
         cars = train.get('cars')
         for i, car in enumerate(cars):
             if person in car.get('people'):
-                if distance is not None and len(cars) > abs(distance):
+                if distance is not None and (0 <= distance <= len(cars[i+1:]) or -len(cars[:i]) <= distance < 0):
                     cars[i+distance]['people'].append(person)
                     car['people'].remove(person)
                     return True
