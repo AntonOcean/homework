@@ -11,7 +11,6 @@ def get_urls(
     stop_at=None,
     request_type=None,
     ignore_www=False,
-    slow_queries=False
 ):
     urls = []
     pattern = r'^\[(\d{2}\/\w{3}\/\d{4} \d{2}:\d{2}:\d{2})\] \"(.*)\" (\d+) (\d+)'
@@ -31,10 +30,7 @@ def get_urls(
                         (not start_at or date > start_at):
                     if ignore_www:
                         url = re.sub(r'^www\.', '', url)
-                    if slow_queries:
-                        urls.append((url, int(timer)))
-                    else:
-                        urls.append(url)
+                    urls.append((url, int(timer)))
     return urls
 
 
@@ -47,7 +43,7 @@ def parse(
     ignore_www=False,
     slow_queries=False
 ):
-    urls = get_urls(ignore_files, ignore_urls, start_at, stop_at, request_type, ignore_www, slow_queries)
+    urls = get_urls(ignore_files, ignore_urls, start_at, stop_at, request_type, ignore_www)
     if slow_queries:
         slow_urls = {}
         for url, time in urls:
@@ -55,12 +51,13 @@ def parse(
                 slow_urls[url] = [time, ]
             else:
                 slow_urls[url].append(time)
-        urls = [(url, time_list) for url, time_list in slow_urls.items()]
-        urls.sort(key=lambda x: max(x[1]), reverse=True)
-        top_slow_urls = urls[:5]
-        res = [int(sum(timing)/len(timing)) for url, timing in top_slow_urls]
+        time_list = [time for time in slow_urls.values()]
+        time_list.sort(key=lambda x: max(x), reverse=True)
+        top_slow = time_list[:5]
+        res = [int(sum(timing)/len(timing)) for timing in top_slow]
         res.sort(reverse=True)
     else:
+        urls = [url for url, time in urls]
         res = [num for url, num in Counter(urls).most_common(5)]
     return res
 
