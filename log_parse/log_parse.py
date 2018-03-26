@@ -1,10 +1,7 @@
 # -*- encoding: utf-8 -*-
-# вова денисов
 import re
 from datetime import datetime
 from collections import Counter
-# Написать функцию, возвращающую списк из количества использования топ 5 урлов
-# без гет параметров
 
 
 def get_urls(
