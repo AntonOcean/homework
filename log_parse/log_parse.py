@@ -60,9 +60,7 @@ def parse(
         res = [int(sum(s)/len(s)) for u, s in slow_urls]
         res.sort(reverse=True)
     else:
-        res = list(Counter(urls).values())
-        res.sort(reverse=True)
-        res = res[:5]
+        res = [num for url, num in Counter(urls).most_common(5)]
     return res
 
 
