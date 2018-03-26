@@ -14,12 +14,10 @@ def get_urls(
     slow_queries=False
 ):
     urls = []
-    slow_urls = {}
     pattern = r'^\[(\d{2}\/\w{3}\/\d{4} \d{2}:\d{2}:\d{2})\] \"(.*)\" (\d+) (\d+)'
     with open('log.log', 'r') as file:
         for line in file:
-            s = line.strip()
-            log = re.search(pattern, s)
+            log = re.search(pattern, line.strip())
             if log:
                 date, response, status_code, timer = log.groups()
                 method, url, protocol = response.split()
@@ -32,15 +30,12 @@ def get_urls(
                         (not stop_at or date < stop_at) and \
                         (not start_at or date > start_at):
                     if ignore_www:
-                        url = url.replace('www.', '')
+                        url = re.sub(r'^www\.', '', url)
                     if slow_queries:
-                        if url not in slow_urls:
-                            slow_urls[url] = [int(timer), ]
-                        else:
-                            slow_urls[url].append(int(timer))
+                        urls.append((url, int(timer)))
                     else:
                         urls.append(url)
-    return urls or slow_urls
+    return urls
 
 
 def parse(
@@ -54,10 +49,16 @@ def parse(
 ):
     urls = get_urls(ignore_files, ignore_urls, start_at, stop_at, request_type, ignore_www, slow_queries)
     if slow_queries:
-        urls = [(k, sorted(v, reverse=True)) for k, v in urls.items()]
-        urls.sort(key=lambda x: x[1][0], reverse=True)
-        slow_urls = urls[:5]
-        res = [int(sum(s)/len(s)) for u, s in slow_urls]
+        slow_urls = {}
+        for url, time in urls:
+            if url not in slow_urls:
+                slow_urls[url] = [time, ]
+            else:
+                slow_urls[url].append(time)
+        urls = [(url, time_list) for url, time_list in slow_urls.items()]
+        urls.sort(key=lambda x: max(x[1]), reverse=True)
+        top_slow_urls = urls[:5]
+        res = [int(sum(timing)/len(timing)) for url, timing in top_slow_urls]
         res.sort(reverse=True)
     else:
         res = [num for url, num in Counter(urls).most_common(5)]
@@ -67,4 +68,4 @@ def parse(
 if __name__ == '__main__':
     # stop_at = datetime.strptime('2018-03-28', '%Y-%m-%d')
     # start_at = datetime.strptime('2018-03-28', '%Y-%m-%d')
-    print(parse(slow_queries=True))
+    print(parse(ignore_www=True))
