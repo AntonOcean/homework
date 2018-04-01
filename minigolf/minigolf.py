@@ -3,33 +3,38 @@ from collections import deque, namedtuple
 from abc import ABCMeta, abstractmethod
 
 Player = namedtuple('Player', ['name'])
+DEBUG = False
 
 
 class Match(metaclass=ABCMeta):
     def __init__(self, holes, players):
-        #  print('Матч начался')
-        self._holes = range(holes).__iter__()
+        print(DEBUG*'Матч начался\n', end='')
+        self._holes = iter(range(holes))
         self._players = deque([player for player in players])
         self._finish = False
-        self._current_hole = self._holes.__next__()
+        self._current_hole = next(self._holes)
         self._iter_players = itertools.cycle(self._players)
         self._pass_list = []
-        self._result = {player: [None for _ in range(holes)] for player in players}
+        self._result = {player: [None]*holes for player in players}
 
     def _create_hole(self):
         self._players.rotate(-1)
         try:
-            self._current_hole = self._holes.__next__()
+            self._current_hole = next(self._holes)
         except StopIteration:
             self._finish = True
-            #  print('Матч закончен')
+            print(DEBUG*'Матч закончен\n', end='')
             return
         self._iter_players = itertools.cycle(self._players)
         self._pass_list = []
-        #  print('Подготовлена лунка №{}'.format(self.current_hole+1))
+        print(DEBUG*'Подготовлена лунка №{}\n'.format(self._current_hole+1), end='')
 
     @abstractmethod
     def hit(self, success=False):
+        pass
+
+    @abstractmethod
+    def _get_top_score(self, top):
         pass
 
     @property
@@ -42,42 +47,44 @@ class Match(metaclass=ABCMeta):
             lst = [player.name, ]
             lst.extend(res)
             result.append(lst)
-        #  print(*list(zip(*result)), sep='\n')
+        print(*list(zip(*result))*DEBUG, sep='\n', end='')
         return list(zip(*result))
 
     def get_winners(self):
         if not self.finished:
             raise RuntimeError
         top = {player: sum(res) for player, res in self._result.items()}
-        if self.__class__.__name__ == 'HolesMatch':
-            fin_result = max(top.values())
-        else:
-            fin_result = min(top.values())
+        fin_result = self._get_top_score(top)
         result = [player for player, summ in top.items() if summ == fin_result]
         return result
 
 
 class HitsMatch(Match):
+    N = 10
+
     def __init__(self, holes, players):
         self._hole_result = {player: 0 for player in players}
         super(HitsMatch, self).__init__(holes, players)
 
+    def _get_top_score(self, top):
+        return min(top.values())
+
     def hit(self, success=False):
         if self.finished:
             raise RuntimeError
-        player = self._iter_players.__next__()
+        player = next(self._iter_players)
         if player in self._pass_list:
             self.hit(success)
             return
         hole = self._current_hole
-        #  print('Игрок {} на лунке {}'.format(player.name, hole+1))
+        print(DEBUG*'Игрок {} на лунке {}\n'.format(player.name, hole+1), end='')
         self._hole_result[player] += 1
         if success:
             self._pass_list.append(player)
             self._result[player][hole] = self._hole_result[player]
-        elif self._hole_result[player] == 9:
+        elif self._hole_result[player] == self.N - 1:
             self._pass_list.append(player)
-            self._result[player][hole] = 10
+            self._result[player][hole] = self.N
         if len(self._pass_list) == len(self._players):
             self._hole_result = {player: 0 for player in self._players}
             self._create_hole()
@@ -88,15 +95,18 @@ class HolesMatch(Match):
         self._hole_hits = 0
         super(HolesMatch, self).__init__(holes, players)
 
+    def _get_top_score(self, top):
+        return max(top.values())
+
     def _count_circle_hole(self):
         return self._hole_hits // len(self._players) + 1
 
     def hit(self, success=False):
         if self.finished:
             raise RuntimeError
-        player = self._iter_players.__next__()
+        player = next(self._iter_players)
         hole = self._current_hole
-        #  print('Игрок {} на лунке {}'.format(player.name, hole + 1))
+        print(DEBUG*'Игрок {} на лунке {}\n'.format(player.name, hole + 1), end='')
         if success:
             self._pass_list.append(player)
             self._result[player][hole] = 1
