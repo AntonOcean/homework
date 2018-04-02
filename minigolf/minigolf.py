@@ -1,14 +1,22 @@
 import itertools
+import logging
 from collections import deque, namedtuple
 from abc import ABCMeta, abstractmethod
 
+
 Player = namedtuple('Player', ['name'])
-DEBUG = False
 
 
 class Match(metaclass=ABCMeta):
+    DEBUG = True
+    OPEN_LOG = False
+
     def __init__(self, holes, players):
-        print(DEBUG*'Матч начался\n', end='')
+        if Match.DEBUG and not Match.OPEN_LOG:
+            self.debug()
+            Match.OPEN_LOG = True
+        logging.info('=' * 20)
+        logging.info('Матч "' + type(self).__name__ + '" начался')
         self._holes = iter(range(holes))
         self._players = deque([player for player in players])
         self._finish = False
@@ -17,17 +25,25 @@ class Match(metaclass=ABCMeta):
         self._pass_list = []
         self._result = {player: [None]*holes for player in players}
 
+    @classmethod
+    def debug(cls):
+        logging.basicConfig(
+            handlers=[logging.FileHandler('match.log', 'w', 'utf-8')],
+            level=logging.INFO,
+            format='%(message)s'
+        )
+
     def _create_hole(self):
         self._players.rotate(-1)
         try:
             self._current_hole = next(self._holes)
         except StopIteration:
             self._finish = True
-            print(DEBUG*'Матч закончен\n', end='')
+            logging.info('Матч закончен')
             return
         self._iter_players = itertools.cycle(self._players)
         self._pass_list = []
-        print(DEBUG*'Подготовлена лунка №{}\n'.format(self._current_hole+1), end='')
+        logging.info('Подготовлена лунка №{}'.format(self._current_hole+1))
 
     @abstractmethod
     def hit(self, success=False):
@@ -47,7 +63,7 @@ class Match(metaclass=ABCMeta):
             lst = [player.name, ]
             lst.extend(res)
             result.append(lst)
-        print(*list(zip(*result))*DEBUG, sep='\n', end='')
+        logging.info('\n'.join([str(line) for line in list(zip(*result))]))
         return list(zip(*result))
 
     def get_winners(self):
@@ -77,7 +93,7 @@ class HitsMatch(Match):
             self.hit(success)
             return
         hole = self._current_hole
-        print(DEBUG*'Игрок {} на лунке {}\n'.format(player.name, hole+1), end='')
+        logging.info('Игрок {} на лунке {}'.format(player.name, hole+1))
         self._hole_result[player] += 1
         if success:
             self._pass_list.append(player)
@@ -106,7 +122,7 @@ class HolesMatch(Match):
             raise RuntimeError
         player = next(self._iter_players)
         hole = self._current_hole
-        print(DEBUG*'Игрок {} на лунке {}\n'.format(player.name, hole + 1), end='')
+        logging.info('Игрок {} на лунке {}'.format(player.name, hole + 1))
         if success:
             self._pass_list.append(player)
             self._result[player][hole] = 1
