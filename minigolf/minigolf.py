@@ -12,6 +12,8 @@ class Match(metaclass=ABCMeta):
     OPEN_LOG = False
 
     def __init__(self, holes, players):
+        assert isinstance(holes, int) and holes > 0, 'Количество лунок - целое положительное число'
+        assert isinstance(players, list) and len(players) > 1, 'Игроки - список, размером больше 1'
         if Match.DEBUG and not Match.OPEN_LOG:
             self.debug()
             Match.OPEN_LOG = True
