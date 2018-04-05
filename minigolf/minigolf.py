@@ -15,7 +15,7 @@ class Match(metaclass=ABCMeta):
         assert isinstance(holes, int) and holes > 0, 'Количество лунок - целое положительное число'
         assert isinstance(players, list) and len(players) > 1, 'Игроки - список, размером больше 1'
         if Match.DEBUG and not Match.OPEN_LOG:
-            self.debug()
+            self._debug()
             Match.OPEN_LOG = True
         logging.info('=' * 20)
         logging.info('Матч "' + type(self).__name__ + '" начался')
@@ -28,7 +28,7 @@ class Match(metaclass=ABCMeta):
         self._result = {player: [None]*holes for player in players}
 
     @classmethod
-    def debug(cls):
+    def _debug(cls):
         logging.basicConfig(
             handlers=[logging.FileHandler('match.log', 'w', 'utf-8')],
             level=logging.INFO,
@@ -73,7 +73,7 @@ class Match(metaclass=ABCMeta):
             raise RuntimeError
         top = {player: sum(res) for player, res in self._result.items()}
         fin_result = self._get_top_score(top)
-        result = [player for player, summ in top.items() if summ == fin_result]
+        result = [player for player, res in top.items() if res == fin_result]
         return result
 
 
