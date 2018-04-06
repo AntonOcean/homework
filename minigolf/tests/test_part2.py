@@ -5,70 +5,76 @@ from minigolf import HitsMatch, HolesMatch, Player
 
 class HitsMatchTestCase(TestCase):
     def setUp(self):
-        self.players = [Player('A'), Player('B'), Player('C')]
-        self.m = HitsMatch(3, self.players)
+        self._players = [Player('A'), Player('B'), Player('C')]
+        self._match = HitsMatch(3, self._players)
 
     def test__init__(self):
+        match = self._match
         with self.assertRaises(AssertionError):
             HitsMatch(0, [Player('A'), Player('B')])
         with self.assertRaises(AssertionError):
             HitsMatch(7, (Player('A'), Player('B')))
         with self.assertRaises(AssertionError):
             HitsMatch(2, [Player('A'), ])
-        self.assertListEqual(list(self.m._players), [Player('A'), Player('B'), Player('C')])
-        self.assertFalse(self.m.finished)
-        self.assertEqual(self.m._current_hole, 0)
+        self.assertListEqual(list(match._players), [Player('A'), Player('B'), Player('C')])
+        self.assertFalse(match.finished)
+        self.assertEqual(match._current_hole, 0)
 
     def test_create_hole(self):
-        self.m._create_hole()
-        self.assertListEqual(list(self.m._players), [Player('B'), Player('C'), Player('A')])
-        self.assertEqual(self.m._current_hole, 1)
-        self.assertFalse(self.m._pass_list)
-        self.m._create_hole()
-        self.assertListEqual(list(self.m._players), [Player('C'), Player('A'), Player('B')])
-        self.assertEqual(self.m._current_hole, 2)
-        self.assertFalse(self.m._pass_list)
-        self.assertFalse(self.m.finished)
-        self.m._create_hole()
-        self.assertTrue(self.m.finished)
+        match = self._match
+        match._create_hole()
+        self.assertListEqual(list(match._players), [Player('B'), Player('C'), Player('A')])
+        self.assertEqual(match._current_hole, 1)
+        self.assertFalse(match._pass_list)
+        match._create_hole()
+        self.assertListEqual(list(match._players), [Player('C'), Player('A'), Player('B')])
+        self.assertEqual(match._current_hole, 2)
+        self.assertFalse(match._pass_list)
+        self.assertFalse(match.finished)
+        match._create_hole()
+        self.assertTrue(match.finished)
 
     def test_get_top_score(self):
-        self.assertEqual(self.m._get_top_score({'A': 1, 'B': 10, 'C': 0}), 0)
-        self.assertEqual(self.m._get_top_score({'A': 100, 'B': 50, 'C': 210}), 50)
+        match = self._match
+        self.assertEqual(match._get_top_score({'A': 1, 'B': 10, 'C': 0}), 0)
+        self.assertEqual(match._get_top_score({'A': 100, 'B': 50, 'C': 210}), 50)
 
     def test_hit(self):
-        self.m.hit()
-        self.assertEqual(self.m._hole_result[self.players[0]], 1)
-        self.m.hit()
-        self.m.hit(True)
-        self.assertEqual(self.m._hole_result[self.players[2]], 1)
-        self.assertEqual(self.m._result[self.players[2]][self.m._current_hole], 1)
-        self.assertListEqual(self.m._pass_list, [self.players[2]])
-        self.assertEqual(self.m._current_hole, 0)
-        self.m.hit(True)
+        match = self._match
+        players = self._players
+        match.hit()
+        self.assertEqual(match._hole_result[players[0]], 1)
+        match.hit()
+        match.hit(True)
+        self.assertEqual(match._hole_result[players[2]], 1)
+        self.assertEqual(match._result[players[2]][match._current_hole], 1)
+        self.assertListEqual(match._pass_list, [players[2]])
+        self.assertEqual(match._current_hole, 0)
+        match.hit(True)
         for _ in range(8):
-            self.m.hit()
-        self.assertEqual(self.m._current_hole, 1)
+            match.hit()
+        self.assertEqual(match._current_hole, 1)
         for i in range(54):
-            self.m.hit()
+            match.hit()
         with self.assertRaises(RuntimeError):
-            self.m.hit()
+            match.hit()
 
     def test_get_table(self):
-        self.m.hit()
-        self.m.hit()
-        self.m.hit(True)
-        self.m.hit(True)
-        self.assertEqual(self.m.get_table(), [
+        match = self._match
+        match.hit()
+        match.hit()
+        match.hit(True)
+        match.hit(True)
+        self.assertEqual(match.get_table(), [
             ('A', 'B', 'C'),
             (2, None, 1),
             (None, None, None),
             (None, None, None),
         ])
         for _ in range(8):
-            self.m.hit()
-        self.assertFalse(self.m.finished)
-        self.assertEqual(self.m.get_table(), [
+            match.hit()
+        self.assertFalse(match.finished)
+        self.assertEqual(match.get_table(), [
             ('A', 'B', 'C'),
             (2, 10, 1),
             (None, None, None),
@@ -76,81 +82,89 @@ class HitsMatchTestCase(TestCase):
         ])
 
     def test_get_winners(self):
-        self.m.hit()
+        match = self._match
+        players = self._players
+        match.hit()
         with self.assertRaises(RuntimeError):
-            self.m.get_winners()
-        self.m.hit()
-        self.m.hit(True)
-        self.m.hit(True)
+            match.get_winners()
+        match.hit()
+        match.hit(True)
+        match.hit(True)
         for _ in range(8):
-            self.m.hit()
-        self.m.hit()
+            match.hit()
+        match.hit()
         for _ in range(3):
-            self.m.hit(True)
-        self.m.hit()
-        self.m.hit(True)
-        self.m.hit()
-        self.m.hit(True)
-        self.m.hit()
-        self.m.hit(True)
-        self.assertEqual(self.m.get_winners(), [
-            self.players[0], self.players[2]
+            match.hit(True)
+        match.hit()
+        match.hit(True)
+        match.hit()
+        match.hit(True)
+        match.hit()
+        match.hit(True)
+        self.assertEqual(match.get_winners(), [
+            players[0], players[2]
         ])
 
 
 class HolesMatchTestCase(TestCase):
     def setUp(self):
-        self.players = [Player('A'), Player('B'), Player('C')]
-        self.m = HolesMatch(3, self.players)
+        self._players = [Player('A'), Player('B'), Player('C')]
+        self._match = HolesMatch(3, self._players)
 
     def test__init__(self):
+        match = self._match
         with self.assertRaises(AssertionError):
             HolesMatch(0, [Player('A'), Player('B')])
         with self.assertRaises(AssertionError):
             HolesMatch(-7, [Player('A'), Player('B')])
         with self.assertRaises(AssertionError):
             HolesMatch(2, [Player('A'), ])
-        self.assertListEqual(list(self.m._players), [Player('A'), Player('B'), Player('C')])
-        self.assertFalse(self.m.finished)
-        self.assertEqual(self.m._current_hole, 0)
+        self.assertListEqual(list(match._players), [Player('A'), Player('B'), Player('C')]) ########
+        self.assertFalse(match.finished)
+        self.assertEqual(match._current_hole, 0)
 
     def test_create_hole(self):
-        self.m._create_hole()
-        self.assertListEqual(list(self.m._players), [Player('B'), Player('C'), Player('A')])
-        self.assertEqual(self.m._current_hole, 1)
-        self.assertFalse(self.m._pass_list)
-        self.m._create_hole()
-        self.assertListEqual(list(self.m._players), [Player('C'), Player('A'), Player('B')])
-        self.assertEqual(self.m._current_hole, 2)
-        self.assertFalse(self.m._pass_list)
-        self.assertFalse(self.m.finished)
-        self.m._create_hole()
-        self.assertTrue(self.m.finished)
+        match = self._match
+        match._create_hole()
+        self.assertListEqual(list(match._players), [Player('B'), Player('C'), Player('A')])
+        self.assertEqual(match._current_hole, 1)
+        self.assertFalse(match._pass_list)
+        match._create_hole()
+        self.assertListEqual(list(match._players), [Player('C'), Player('A'), Player('B')])
+        self.assertEqual(match._current_hole, 2)
+        self.assertFalse(match._pass_list)
+        self.assertFalse(match.finished)
+        match._create_hole()
+        self.assertTrue(match.finished)
 
     def test_get_top_score(self):
-        self.assertEqual(self.m._get_top_score({'A': 1, 'B': 10, 'C': 0}), 10)
-        self.assertEqual(self.m._get_top_score({'A': 100, 'B': 50, 'C': 210}), 210)
+        match = self._match
+        self.assertEqual(match._get_top_score({'A': 1, 'B': 10, 'C': 0}), 10)
+        self.assertEqual(match._get_top_score({'A': 100, 'B': 50, 'C': 210}), 210)
 
     def test_hit(self):
-        self.m.hit(True)
-        self.assertListEqual(self.m._pass_list, [self.players[0]])
-        self.assertEqual(self.m._result[self.players[0]][self.m._current_hole], 1)
-        self.assertEqual(self.m._hole_hits, 1)
-        self.assertEqual(self.m._count_circle_hole(), 1)
-        self.m.hit()
-        self.m.hit()
-        self.assertEqual(self.m._current_hole, 1)
+        match = self._match
+        players = self._players
+        match.hit(True)
+        self.assertListEqual(match._pass_list, [players[0]])
+        self.assertEqual(match._result[players[0]][match._current_hole], 1)
+        self.assertEqual(match._hole_hits, 1)
+        self.assertEqual(match._count_circle_hole(), 1)
+        match.hit()
+        match.hit()
+        self.assertEqual(match._current_hole, 1)
         for i in range(60):
-            self.m.hit()
+            match.hit()
         with self.assertRaises(RuntimeError):
-            self.m.hit()
+            match.hit()
 
     def test_get_table(self):
-        self.m.hit(True)
-        self.m.hit()
-        self.m.hit()
-        self.assertFalse(self.m.finished)
-        self.assertEqual(self.m.get_table(), [
+        match = self._match
+        match.hit(True)
+        match.hit()
+        match.hit()
+        self.assertFalse(match.finished)
+        self.assertEqual(match.get_table(), [
             ('A', 'B', 'C'),
             (1, 0, 0),
             (None, None, None),
@@ -158,25 +172,28 @@ class HolesMatchTestCase(TestCase):
         ])
 
     def test_get_winners(self):
-        self.m.hit(True)
-        self.m.hit()
+        match = self._match
+        players = self._players
+        match.hit(True)
+        match.hit()
         with self.assertRaises(RuntimeError):
-            self.m.get_winners()
-        self.m.hit()
+            match.get_winners()
+        match.hit()
         for _ in range(10):
             for _ in range(3):
-                self.m.hit()
+                match.hit()
         for _ in range(9):
             for _ in range(3):
-                self.m.hit()
-        self.m.hit(True)
-        self.m.hit(True)
-        self.m.hit()
-        self.assertEqual(self.m.get_winners(), [self.players[0]])
+                match.hit()
+        match.hit(True)
+        match.hit(True)
+        match.hit()
+        self.assertEqual(match.get_winners(), [players[0]])
 
     def test_count_circle_hole(self):
-        self.m.hit()
-        self.assertEqual(self.m._count_circle_hole(), 1)
+        match = self._match
+        match.hit()
+        self.assertEqual(match._count_circle_hole(), 1)
         for _ in range(10):
-            self.m.hit()
-        self.assertEqual(self.m._count_circle_hole(), 4)
+            match.hit()
+        self.assertEqual(match._count_circle_hole(), 4)
