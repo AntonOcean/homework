@@ -60,7 +60,7 @@ class FirstServerTestCase(TestCase):
         answer = self.send_command_get_answer(command)
         self.assertListEqual(answer.split()[1:], ['30', '909090'])
 
-        sleep(6)
+        sleep(61)
 
         command = 'IN test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)

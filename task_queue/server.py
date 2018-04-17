@@ -5,7 +5,7 @@ import shelve
 from collections import deque
 import logging
 from uuid import uuid1
-
+import sys
 
 class Task:
     def __init__(self, length, data):
@@ -29,13 +29,13 @@ class Server:
     DEBUG = True
     OPEN_LOG = False
 
-    def __init__(self, port=8080, timelimit=5):
+    def __init__(self, port=8080, timelimit=1):
         if Server.DEBUG and not Server.OPEN_LOG:
             self._debug()
             Server.OPEN_LOG = True
         logging.info('=' * 20)
         self.port = port
-        self.time_limit = timelimit
+        self.time_limit = timelimit*60
         self.command = {
             'ADD': self.add_task,
             'GET': self.get_task,
@@ -182,4 +182,4 @@ class Server:
 
 
 if __name__ == '__main__':
-    Server()
+    Server(*list(map(int, sys.argv[1:])))
