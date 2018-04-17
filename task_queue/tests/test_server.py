@@ -85,6 +85,7 @@ class FirstServerTestCase(TestCase):
 
         self.tcp_socket.close()
         self.process.join(1)
+        self.process.terminate()
 
 
 class SecondServerTestCase(TestCase):
@@ -115,3 +116,4 @@ class SecondServerTestCase(TestCase):
 
         self.tcp_socket.close()
         self.process.join(1)
+        self.process.terminate()
