@@ -4,13 +4,14 @@ import socket
 import shelve
 from collections import deque
 import logging
+from uuid import uuid1
 
 
 class Task:
-    def __init__(self, length, data, queue):
+    def __init__(self, length, data):
         self.length = length
         self.data = data
-        self.id = self.generate_id(queue)
+        self.id = uuid1().hex
         self.worker = None
         self.work = False
 
@@ -22,10 +23,6 @@ class Task:
         del self.worker
         self.worker = None
         self.work = False
-
-    @staticmethod
-    def generate_id(queue):
-        return str(len(queue))
 
 
 class Server:
@@ -68,8 +65,7 @@ class Server:
                     else:
                         copy_task = Task(
                             length=task.length,
-                            data=task.data,
-                            queue=[]
+                            data=task.data
                         )
                         copy_task.id = task.id
                         copy_task.worker = None
@@ -137,7 +133,7 @@ class Server:
         if not queue:
             self.queues[queue_name] = deque()
             queue = self.queues.get(queue_name)
-        task = Task(length, data, queue)
+        task = Task(length, data)
         queue.append(task)
         logging.info('---Состояние: ' + str(self.queues))
         self.write_changed_state()

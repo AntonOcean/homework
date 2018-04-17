@@ -8,12 +8,12 @@ import os
 from task_queue.server import Server
 
 
-class ServerTestCase(TestCase):
+class FirstServerTestCase(TestCase):
     def __init__(self, *args, **kwargs):
         for file in os.listdir(os.path.dirname(__file__)):
             if file.startswith('last_state'):
                 os.remove(file)
-        super(ServerTestCase, self).__init__(*args, **kwargs)
+        super(FirstServerTestCase, self).__init__(*args, **kwargs)
 
     def setUp(self):
         self.process = Process(target=Server)
@@ -33,18 +33,18 @@ class ServerTestCase(TestCase):
 
     def test_add_command(self):
         command = 'ADD test_queue 20 808080'
-        answer = self.send_command_get_answer(command)
-        self.assertEqual(answer, '0')
+        task1_id = self.send_command_get_answer(command)
+        self.assertEqual(len(task1_id), 32)
 
         command = 'ADD test_queue 30 909090'
-        answer = self.send_command_get_answer(command)
-        self.assertEqual(answer, '1')
+        task2_id = self.send_command_get_answer(command)
+        self.assertEqual(len(task2_id), 32)
 
         command = 'ADD test_queue 20'
         answer = self.send_command_get_answer(command)
         self.assertEqual(answer, 'Not valid command')
 
-        command = 'IN test_queue 0'
+        command = 'IN test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
         self.assertEqual(answer, 'YES')
 
@@ -54,31 +54,31 @@ class ServerTestCase(TestCase):
 
         command = 'GET test_queue'
         answer = self.send_command_get_answer(command)
-        self.assertEqual(answer, '0 20 808080')
+        self.assertListEqual(answer.split()[1:], ['20', '808080'])
 
         command = 'GET test_queue'
         answer = self.send_command_get_answer(command)
-        self.assertEqual(answer, '1 30 909090')
+        self.assertListEqual(answer.split()[1:], ['30', '909090'])
 
         sleep(6)
 
-        command = 'IN test_queue 0'
+        command = 'IN test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
         self.assertEqual(answer, 'YES')
 
-        command = 'IN test_queue 1'
+        command = 'IN test_queue {}'.format(task2_id)
         answer = self.send_command_get_answer(command)
         self.assertEqual(answer, 'YES')
 
         command = 'GET test_queue'
         answer = self.send_command_get_answer(command)
-        self.assertEqual(answer, '0 20 808080')
+        self.assertListEqual(answer.split()[1:], ['20', '808080'])
 
-        command = 'ACK test_queue 0'
+        command = 'ACK test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
         self.assertEqual(answer, 'ok')
 
-        command = 'IN test_queue 0'
+        command = 'IN test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
         self.assertEqual(answer, 'NO')
 
@@ -86,8 +86,8 @@ class ServerTestCase(TestCase):
         self.process.join(1)
 
 
-class Ter(TestCase):
-    def test_com(self):
+class SecondServerTestCase(TestCase):
+    def setUp(self):
         self.process = Process(target=Server)
         self.process.start()
         host = '127.0.0.1'
@@ -96,6 +96,21 @@ class Ter(TestCase):
         self.tcp_socket = socket(AF_INET, SOCK_STREAM)
         self.tcp_socket.connect(addr)
 
+    def send_command_get_answer(self, command):
+        command = str.encode(command)
+        self.tcp_socket.send(command)
+        answer = self.tcp_socket.recv(1024)
+        answer = bytes.decode(answer)
+        return answer
+
+    def test_com(self):
+        command = 'ADD test_queue 50 909090'
+        answer = self.send_command_get_answer(command)
+        self.assertEqual(len(answer), 32)
+
+        command = 'GET test_queue'
+        answer = self.send_command_get_answer(command)
+        self.assertListEqual(answer.split()[1:], ['30', '909090'])
 
         self.tcp_socket.close()
         self.process.join(1)
