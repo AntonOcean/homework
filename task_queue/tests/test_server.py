@@ -83,3 +83,19 @@ class ServerTestCase(TestCase):
         self.assertEqual(answer, 'NO')
 
         self.tcp_socket.close()
+        self.process.join(1)
+
+
+class Ter(TestCase):
+    def test_com(self):
+        self.process = Process(target=Server)
+        self.process.start()
+        host = '127.0.0.1'
+        port = 8080
+        addr = (host, port)
+        self.tcp_socket = socket(AF_INET, SOCK_STREAM)
+        self.tcp_socket.connect(addr)
+
+
+        self.tcp_socket.close()
+        self.process.join(1)

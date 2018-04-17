@@ -1,9 +1,8 @@
 import dbm
-from threading import Thread, Timer
+from threading import Timer
 import socket
 import shelve
 from collections import deque
-from time import sleep
 import logging
 
 
