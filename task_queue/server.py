@@ -7,6 +7,7 @@ import logging
 from uuid import uuid1
 import sys
 
+
 class Task:
     def __init__(self, length, data):
         self.length = length
@@ -144,7 +145,7 @@ class Server:
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         connection.bind(('127.0.0.1', self.port))
-        connection.listen(10)
+        connection.listen(100)
         logging.info('Сервер начал работу')
         try:
             self.read_last_state()
@@ -160,6 +161,11 @@ class Server:
                     logging.info('Сервер закончил работу')
                     logging.info('---Состояние: ' + str(self.queues))
                     self.write_changed_state()
+                    for queue, tasks in self.queues.items():
+                        for task in tasks:
+                            if task.work:
+                                task.worker.cancel()
+                                del task.worker
                     current_connection.shutdown(1)
                     current_connection.close()
                     logging.info('='*20)

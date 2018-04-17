@@ -16,7 +16,8 @@ class FirstServerTestCase(TestCase):
         super(FirstServerTestCase, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        self.process = Process(target=Server)
+        self.time_limit = 0.2
+        self.process = Process(target=Server, args=(8080, self.time_limit))
         self.process.start()
         host = '127.0.0.1'
         port = 8080
@@ -60,7 +61,7 @@ class FirstServerTestCase(TestCase):
         answer = self.send_command_get_answer(command)
         self.assertListEqual(answer.split()[1:], ['30', '909090'])
 
-        sleep(61)
+        sleep(self.time_limit*60)
 
         command = 'IN test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
@@ -88,7 +89,7 @@ class FirstServerTestCase(TestCase):
 
 class SecondServerTestCase(TestCase):
     def setUp(self):
-        self.process = Process(target=Server)
+        self.process = Process(target=Server, args=(8080, 0.2))
         self.process.start()
         host = '127.0.0.1'
         port = 8080
