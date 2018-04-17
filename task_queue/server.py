@@ -1,5 +1,5 @@
 import dbm
-from threading import Thread
+from threading import Thread, Timer
 import socket
 import shelve
 from collections import deque
@@ -18,10 +18,9 @@ class Task:
     def __repr__(self):
         return '(id: {}, work: {})'.format(self.id, self.work)
 
-    def working(self, limit, queue_name):
-        sleep(limit)
-        self.worker.is_alive()
+    def set_task(self, queue_name):
         logging.info('---Ответ: задача с id {} в {} не выполнена'.format(self.id, queue_name))
+        del self.worker
         self.worker = None
         self.work = False
 
@@ -81,13 +80,13 @@ class Server:
 
     def read_last_state(self):
         with shelve.open("last_state.txt", 'r') as db:
-            for queue, tasks in db['state'].items():
+            self.queues = db['state']
+            for queue, tasks in self.queues.items():
                 for task in tasks:
                     if task.work:
-                        task.worker = Thread(target=task.working, args=(self.time_limit, queue))
+                        task.worker = Timer(self.time_limit, function=task.set_task, args=(queue,))
                         task.worker.start()
                         logging.info('---Ответ: задача с id {} выдана из {}'.format(task.id, queue))
-            self.queues = db['state']
 
     def get_task(self, queue_name):
         logging.info('--Выполняется GET')
@@ -95,11 +94,11 @@ class Server:
         if queue:
             for task in queue:
                 if not len(queue):
-                    return None
+                    return 'None'
                 if not task.work:
-                    task.worker = Thread(target=task.working, args=(self.time_limit, queue_name))
-                    task.worker.start()
                     task.work = True
+                    task.worker = Timer(self.time_limit, function=task.set_task, args=(queue_name,))
+                    task.worker.start()
                     logging.info('---Состояние: ' + str(self.queues))
                     self.write_changed_state()
                     logging.info('---Ответ: задача с id {} выдана из {}'.format(task.id, queue_name))
@@ -107,16 +106,15 @@ class Server:
         logging.info('---Состояние: ' + str(self.queues))
         self.write_changed_state()
         logging.info('---Ответ: нет задач для выдачи из {}'.format(queue_name))
-        return None
+        return 'None'
 
     def confirm_ready(self, queue_name, ident):
         logging.info('--Выполняется ACK')
         queue = self.queues.get(queue_name)
         for task in queue:
             if task.id == ident and task.worker:
-                task.worker.is_alive()
+                task.worker.cancel()
                 queue.remove(task)
-                del task.worker
                 del task
                 logging.info('---Состояние: ' + str(self.queues))
                 self.write_changed_state()
