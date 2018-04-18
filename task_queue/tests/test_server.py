@@ -5,13 +5,13 @@ from multiprocessing import Process
 from time import sleep
 import os
 
-from task_queue.server import Server
+from server import Server
 
 
 class FirstServerTestCase(TestCase):
     def __init__(self, *args, **kwargs):
         for file in os.listdir(os.path.dirname(__file__)):
-            if file.startswith('last_state'):
+            if file.startswith('last_state') or file.startswith('server.log'):
                 os.remove(file)
         super(FirstServerTestCase, self).__init__(*args, **kwargs)
 
@@ -77,7 +77,7 @@ class FirstServerTestCase(TestCase):
 
         command = 'ACK test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
-        self.assertEqual(answer, 'ok')
+        self.assertEqual(answer, 'YES')
 
         command = 'IN test_queue {}'.format(task1_id)
         answer = self.send_command_get_answer(command)
