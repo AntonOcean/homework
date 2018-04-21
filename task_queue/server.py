@@ -17,6 +17,9 @@ class Task:
     def __repr__(self):
         return '(id: {}, work: {})'.format(self.id, self.timer)
 
+    def in_work(self, current_time, limit_time):
+        return current_time - self.timer < limit_time
+
     def create_work(self):
         self.timer = int(datetime.now().timestamp())
 
@@ -64,7 +67,7 @@ class Server:
         queue = self.queues.get(queue_name)
         if queue:
             for task in queue:
-                if self.current_time - task.timer >= self.time_limit:
+                if not task.in_work(self.current_time, self.time_limit):
                     task.create_work()
                     logging.info('---Состояние: ' + str(self.queues))
                     self.write_current_state()
@@ -77,7 +80,7 @@ class Server:
         logging.info('--Выполняется ACK')
         queue = self.queues.get(queue_name)
         for task in queue:
-            if task.id == num and self.current_time - task.timer < self.time_limit:
+            if task.id == num and task.in_work(self.current_time, self.time_limit):
                 queue.remove(task)
                 del task
                 logging.info('---Состояние: ' + str(self.queues))
