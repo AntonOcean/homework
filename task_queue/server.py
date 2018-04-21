@@ -1,10 +1,10 @@
 import dbm
-from threading import Timer
 import socket
 import shelve
 from collections import deque
 import logging
 from uuid import uuid1
+from datetime import datetime
 
 
 class Task:
@@ -12,16 +12,17 @@ class Task:
         self.length = length
         self.data = data
         self.id = uuid1().hex
-        self.worker = None
-        self.work = False
+        self.timer = 0
 
     def __repr__(self):
-        return '(id: {}, work: {})'.format(self.id, self.work)
+        return '(id: {}, work: {})'.format(self.id, self.timer)
 
-    def after_time_limit(self, queue_name):
+    def create_work(self):
+        self.timer = int(datetime.now().timestamp())
+
+    def finish_work(self, queue_name):
         logging.info('---Ответ: задача с id {} в {} не выполнена'.format(self.id, queue_name))
-        self.worker = None
-        self.work = False
+        self.timer = 0
 
 
 class Server:
@@ -42,6 +43,7 @@ class Server:
             'IN': self.in_command,
         }
         self.queues = {}
+        self.current_time = 0
         self.listen()
 
     @classmethod
@@ -54,50 +56,24 @@ class Server:
         )
 
     def write_current_state(self):
-        data = {}
         with shelve.open("last_state", 'n') as db:
-            for queue_name, tasks in self.queues.items():
-                data[queue_name] = deque()
-                for task in tasks:
-                    if not task.work:
-                        data[queue_name].append(task)
-                    else:
-                        # Что бы не сбросить текущий поток, создаем копию задачи
-                        copy_task = Task(
-                            length=task.length,
-                            data=task.data
-                        )
-                        copy_task.id = task.id
-                        copy_task.worker = None
-                        copy_task.work = True
-                        data[queue_name].append(copy_task)
-            db['state'] = data
+            db['state'] = self.queues
 
     def read_last_state(self):
         with shelve.open("last_state", 'r') as db:
             self.queues = db['state']
-            for queue_name, tasks in self.queues.items():
-                for task in tasks:
-                    if task.work:
-                        task.worker = Timer(self.time_limit, function=task.after_time_limit, args=(queue_name,))
-                        task.worker.start()
-                        logging.info('---Ответ: задача с id {} выдана из {}'.format(task.id, queue_name))
 
     def get_command(self, queue_name):
         logging.info('--Выполняется GET')
         queue = self.queues.get(queue_name)
         if queue:
             for task in queue:
-                if not task.work:
-                    task.work = True
-                    task.worker = Timer(self.time_limit, function=task.after_time_limit, args=(queue_name,))
-                    task.worker.start()
-
+                if self.current_time - task.timer >= self.time_limit:
+                    task.create_work()
                     logging.info('---Состояние: ' + str(self.queues))
                     self.write_current_state()
                     logging.info('---Ответ: задача с id {} выдана из {}'.format(task.id, queue_name))
                     return task.id + ' ' + str(task.length) + ' ' + str(task.data)
-
         logging.info('---Ответ: нет задач для выдачи из {}'.format(queue_name))
         return 'None'
 
@@ -105,16 +81,13 @@ class Server:
         logging.info('--Выполняется ACK')
         queue = self.queues.get(queue_name)
         for task in queue:
-            if task.id == num and task.worker:
-                task.worker.cancel()
+            if task.id == num and self.current_time - task.timer < self.time_limit:
                 queue.remove(task)
                 del task
-
                 logging.info('---Состояние: ' + str(self.queues))
                 self.write_current_state()
                 logging.info('---Ответ: задача с id {} в {} выполнена'.format(num, queue_name))
                 return 'YES'
-
         logging.info('---Ответ: задача с id {} в {} не требует выполнения'.format(num, queue_name))
         return 'NO'
 
@@ -137,7 +110,6 @@ class Server:
             queue = self.queues.get(queue_name)
         task = Task(length, data)
         queue.append(task)
-
         logging.info('---Состояние: ' + str(self.queues))
         self.write_current_state()
         logging.info('---Ответ: задача с Id {} добавлена в {}'.format(task.id, queue_name))
@@ -148,46 +120,27 @@ class Server:
         connection.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         connection.bind(('127.0.0.1', self.port))
         connection.listen(10)
-
         logging.info('Сервер начал работу')
         try:
             self.read_last_state()
         except dbm.error:
             pass
         logging.info('---Состояние: ' + str(self.queues))
-
         while True:
             current_connection, address = connection.accept()
-
             logging.info('Сервер установил соединение ' + str(address))
-            try:
-                self.read_last_state()
-            except dbm.error:
-                pass
             logging.info('---Состояние: ' + str(self.queues))
-
             while True:
                 data = current_connection.recv(2048)
                 message = bytes.decode(data)
-
                 if not message:
-
                     logging.info('Сервер закрыл соединение ' + str(address))
                     logging.info('---Состояние: ' + str(self.queues))
                     self.write_current_state()
-
-                    for queue, tasks in self.queues.items():
-                        for task in tasks:
-                            if task.work and task.worker:
-                                task.worker.cancel()
-                                task.worker = None
-
                     current_connection.shutdown(1)
                     current_connection.close()
                     logging.info('='*20)
-
                     break
-
                 else:
                     logging.info('-На сервер пришла команда: ' + message)
                     message = bytes.decode(data).split()
@@ -196,6 +149,7 @@ class Server:
                     func = self._command.get(command)
                     if func:
                         try:
+                            self.current_time = int(datetime.now().timestamp())
                             result = func(*args)
                         except TypeError:
                             result = 'Not valid command'
@@ -203,7 +157,6 @@ class Server:
                     else:
                         result = 'Not valid command'
                         logging.info('-Эта команда неверная')
-
                     current_connection.send(result.encode())
 
 
