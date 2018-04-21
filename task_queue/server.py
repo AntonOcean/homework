@@ -20,10 +20,6 @@ class Task:
     def create_work(self):
         self.timer = int(datetime.now().timestamp())
 
-    def finish_work(self, queue_name):
-        logging.info('---Ответ: задача с id {} в {} не выполнена'.format(self.id, queue_name))
-        self.timer = 0
-
 
 class Server:
     DEBUG = True
