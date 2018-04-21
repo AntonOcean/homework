@@ -54,13 +54,14 @@ class Server:
             datefmt='%I:%M:%S'
         )
 
-    def write_current_state(self):
+    def write_current_state(self, key):
         with shelve.open("last_state", 'n') as db:
-            db['state'] = self.queues
+            db[key] = self.queues.get(key)
 
     def read_last_state(self):
         with shelve.open("last_state", 'r') as db:
-            self.queues = db['state']
+            for element in db.keys():
+                self.queues[element] = db[element]
 
     def get_command(self, queue_name):
         logging.info('--Выполняется GET')
@@ -70,7 +71,7 @@ class Server:
                 if not task.in_work(self.current_time, self.time_limit):
                     task.create_work()
                     logging.info('---Состояние: ' + str(self.queues))
-                    self.write_current_state()
+                    self.write_current_state(queue_name)
                     logging.info('---Ответ: задача с id {} выдана из {}'.format(task.id, queue_name))
                     return task.id + ' ' + str(task.length) + ' ' + str(task.data)
         logging.info('---Ответ: нет задач для выдачи из {}'.format(queue_name))
@@ -84,7 +85,7 @@ class Server:
                 queue.remove(task)
                 del task
                 logging.info('---Состояние: ' + str(self.queues))
-                self.write_current_state()
+                self.write_current_state(queue_name)
                 logging.info('---Ответ: задача с id {} в {} выполнена'.format(num, queue_name))
                 return 'YES'
         logging.info('---Ответ: задача с id {} в {} не требует выполнения'.format(num, queue_name))
@@ -110,7 +111,7 @@ class Server:
         task = Task(length, data)
         queue.append(task)
         logging.info('---Состояние: ' + str(self.queues))
-        self.write_current_state()
+        self.write_current_state(queue_name)
         logging.info('---Ответ: задача с Id {} добавлена в {}'.format(task.id, queue_name))
         return task.id
 
@@ -135,7 +136,7 @@ class Server:
                 if not message:
                     logging.info('Сервер закрыл соединение ' + str(address))
                     logging.info('---Состояние: ' + str(self.queues))
-                    self.write_current_state()
+                    #self.write_current_state()
                     current_connection.shutdown(1)
                     current_connection.close()
                     logging.info('='*20)

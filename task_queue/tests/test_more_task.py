@@ -8,12 +8,12 @@ import os
 import subprocess
 
 
-class ServerBaseTest(TestCase):
+class ServerMoreTaskTest(TestCase):
     def __init__(self, *args, **kwargs):
         for file in os.listdir(os.path.dirname(__file__)):
             if file.startswith('last_state') or file.startswith('server.log'):
                 os.remove(file)
-        super(ServerBaseTest, self).__init__(*args, **kwargs)
+        super(ServerMoreTaskTest, self).__init__(*args, **kwargs)
 
     def setUp(self):
         self.server = subprocess.Popen(['python', 'server.py'])
@@ -32,10 +32,12 @@ class ServerBaseTest(TestCase):
         s.close()
         return data
 
-    def test_base_scenario(self):
+    def test_more_tasks(self):
+        for i in range(200):
+            command = 'ADD 2 {} 12345'.format(str(i))
+            self.send(command.encode())
         task_id = self.send(b'ADD 1 5 12345')
         self.assertEqual(b'YES', self.send(b'IN 1 ' + task_id))
-
         self.assertEqual(task_id + b' 5 12345', self.send(b'GET 1'))
         self.assertEqual(b'YES', self.send(b'IN 1 ' + task_id))
         self.assertEqual(b'YES', self.send(b'ACK 1 ' + task_id))
@@ -43,23 +45,6 @@ class ServerBaseTest(TestCase):
         self.assertEqual(b'NO', self.send(b'IN 1 ' + task_id))
 
         self.tearDown()
-
-    def test_two_tasks(self):
-        first_task_id = self.send(b'ADD 1 5 12345')
-        second_task_id = self.send(b'ADD 1 5 12345')
-        self.assertEqual(b'YES', self.send(b'IN 1 ' + first_task_id))
-        self.assertEqual(b'YES', self.send(b'IN 1 ' + second_task_id))
-
-        self.assertEqual(first_task_id + b' 5 12345', self.send(b'GET 1'))
-        self.assertEqual(b'YES', self.send(b'IN 1 ' + first_task_id))
-        self.assertEqual(b'YES', self.send(b'IN 1 ' + second_task_id))
-        self.assertEqual(second_task_id + b' 5 12345', self.send(b'GET 1'))
-
-        self.assertEqual(b'YES', self.send(b'ACK 1 ' + second_task_id))
-        self.assertEqual(b'NO', self.send(b'ACK 1 ' + second_task_id))
-
-        self.tearDown()
-
 
 if __name__ == '__main__':
     unittest.main()
