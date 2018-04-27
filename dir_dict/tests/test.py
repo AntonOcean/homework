@@ -1,4 +1,3 @@
-from time import sleep
 from unittest import TestCase
 
 from dir_dict import DirDict

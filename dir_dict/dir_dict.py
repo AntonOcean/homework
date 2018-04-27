@@ -45,12 +45,3 @@ class DirDict(MutableMapping):
             with open(self.path + element) as file:
                 d[element] = file.read()
         return str(d)
-
-
-if __name__ == '__main__':
-    x = DirDict('tmp/dirdict')
-    x['lng'] = 'Python\n'
-    for i in x.values():
-        print(i)
-
-
