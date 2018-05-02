@@ -5,7 +5,7 @@ import glob
 
 class DirDict(MutableMapping):
     def __init__(self, path):
-        self.path = path + '/'
+        self.path = path
         if os.path.exists(path):
             self.clear()
         else:
@@ -19,13 +19,13 @@ class DirDict(MutableMapping):
 
     def __getitem__(self, item):
         try:
-            with open(self.path + item, 'r') as file:
+            with open(os.path.join(self.path, item), 'r') as file:
                 return file.read()
         except FileNotFoundError:
             raise KeyError
 
     def __setitem__(self, key, value):
-        with open(self.path + key, 'w') as file:
+        with open(os.path.join(self.path, key), 'w') as file:
             file.write(str(value))
 
     def __iter__(self):
@@ -36,12 +36,12 @@ class DirDict(MutableMapping):
         return len(self.dict)
 
     def __delitem__(self, key):
-        file = glob.glob(self.path + key)[0]
+        file = glob.glob(os.path.join(self.path, key))[0]
         os.remove(file)
 
     def __repr__(self):
-        d = {}
+        view_dict = {}
         for element in self.dict:
-            with open(self.path + element) as file:
-                d[element] = file.read()
-        return str(d)
+            with open(os.path.join(self.path, element)) as file:
+                view_dict[element] = file.read()
+        return str(view_dict)
