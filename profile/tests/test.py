@@ -1,5 +1,5 @@
 from unittest import TestCase
-from profile import profile
+from profile import profile, profile_all
 from time import sleep
 
 
@@ -12,7 +12,7 @@ class DictTestCase(TestCase):
 
         function_test()
 
-        @profile
+        @profile_all
         class TestClass:
             def __init__(self):
                 self.method()
