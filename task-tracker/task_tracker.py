@@ -13,6 +13,16 @@ class TaskTracker:
 
     def create_tables(self):
         self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user
+        (
+          id        INT AUTO_INCREMENT
+            PRIMARY KEY,
+          user_name VARCHAR(50) NOT NULL
+        )
+          ENGINE = InnoDB;
+        COMMIT; 
+        """)
+        self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS task
         (
           id             INT AUTO_INCREMENT
@@ -24,7 +34,7 @@ class TaskTracker:
           CONSTRAINT parent_task_id_fk
           FOREIGN KEY (parent_task_id) REFERENCES task (id),
           CONSTRAINT task_worker_id_fk
-          FOREIGN KEY (worker_id) REFERENCES user (id)
+          FOREIGN KEY (worker_id) REFERENCES user (id) 
         )
           ENGINE = InnoDB;
         
@@ -33,16 +43,6 @@ class TaskTracker:
         
         CREATE INDEX task_worker_id_fk
           ON task (worker_id);
-        COMMIT; 
-        """)
-        self.cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user
-        (
-          id        INT AUTO_INCREMENT
-            PRIMARY KEY,
-          user_name VARCHAR(50) NOT NULL
-        )
-          ENGINE = InnoDB;
         COMMIT; 
         """)
 
@@ -144,6 +144,14 @@ class TaskTracker:
         """)
         print(*self.cursor.fetchall(), sep='\n')
 
+    def drop_tables(self):
+        self.cursor.execute("""
+        ALTER TABLE task
+        DROP FOREIGN KEY parent_task_id_fk;
+        DROP TABLE task;
+        COMMIT; 
+        DROP TABLE user;
+        """)
 
 if __name__ == '__main__':
     start_data = {
@@ -155,9 +163,11 @@ if __name__ == '__main__':
         ]
     }
     m = TaskTracker()
-    m.get_task('Anton', 'task_2')
+    m.create_tables()
     m.create_user_and_tasks(**start_data)
-    m.set_finish('hello')
-    m.add_task('One', 'Who')
+    m.get_task('Vadim', 'task_2')
     m.see_all_tasks()
-    print(m.check_status('task_3'))
+    m.set_finish('task_2')
+    print('='*20)
+    m.see_all_tasks()
+    m.drop_tables()
