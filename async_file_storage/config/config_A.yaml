@@ -1,0 +1,6 @@
+base_dir: tmp\a
+node_list:
+  - host: localhost
+    port: 8088
+save_file: True
+time_to_live: 60

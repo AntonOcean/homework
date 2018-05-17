@@ -1,0 +1,6 @@
+base_dir: tmp\b
+node_list:
+  - host: localhost
+    port: 8080
+save_file: False
+time_to_live: 0
