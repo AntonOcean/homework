@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div>
+    <h5>Сервер запущен с конигурацией:</h5>
+    --Директория: {{ base_dir }}<br>
+    --Список нод: {{ node_list }}<br>
+    --Сохранение файлов: {{save_file}}<br>
+    --Время жизни файлов: {{time_to_live}}<br>
+    Файлы на сервере: {{file_on}}
+</div>
+{% if error %}Ошибка, такой файл уже существует!{% endif %}
+<form action="/" method="post" enctype="multipart/form-data">
+            <div class="form-group mt-3">
+                <input type="file" class="form-control" name="file_text" required id="file_text" /></div>
+            <input type="submit" class="col btn btn-sm btn-outline-secondary" value="Загрузить файл" />
+</form>
+{% endblock %}
