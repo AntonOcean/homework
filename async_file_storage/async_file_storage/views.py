@@ -5,12 +5,13 @@ import asyncio
 from datetime import datetime
 import aiohttp_jinja2
 
-from async_file_storage.async_file_storage.settings import config, BASE_DIR
+from async_file_storage.async_file_storage.settings import BASE_DIR
 
 
 @aiohttp_jinja2.template('index.html')
 async def handle(request):
     error = None
+    config = request.app.get('config')
     if request.method == 'POST':
         data = await request.post()
         file_text = data.get('file_text')
@@ -50,16 +51,27 @@ def delete_file(path, timer):
     os.remove(path)
 
 
+async def download_wiki(url, params):
+    async with ClientSession() as session:
+        async with session.get(url, params=params) as response:
+            if response.status == 200:
+                return await response.text()
+            else:
+                return None
+
+
 async def search(request):
     time_start = datetime.now()
 
+    config = request.app.get('config')
     file_name = request.match_info.get('file_name')
     path = os.path.join(BASE_DIR, config['base_dir'], file_name)
     result = '404: Файл не найден'
     status_code = 404
     request_from_node = request.query.get('request_from_node')
+    loop = asyncio.get_event_loop()
+
     if os.path.exists(path):
-        loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, read_file, path)
         if request_from_node:
             return web.Response(text=result, status=200)
@@ -69,23 +81,25 @@ async def search(request):
 
     else:
         node_list = config['node_list']
+        coroutines_list = []
         for node in node_list:
-            # одновременный опрос
-            print(datetime.now(),config['base_dir'], node)
             url = f"http://{node['host']}:{node['port']}/{file_name}"
             params = {'request_from_node': 1}
-            async with ClientSession() as session:
-                async with session.get(url, params=params) as resp:
-                    if resp.status == 200:
-                        result = await resp.text()
-                        status_code = 200
-                        if config['save_file']:
-                            loop = asyncio.get_event_loop()
-                            await loop.run_in_executor(None, save_file, path, result)
+            coroutines_list.append(download_wiki(url, params))
 
-                            timer = config['time_to_live']
-                            await loop.run_in_executor(None, delete_file, path, timer)
-                        break
+        done, pending = await asyncio.wait(
+            coroutines_list,
+            return_when=asyncio.ALL_COMPLETED)
+
+        for res in done:
+            result = res.result()
+            if result:
+                status_code = 200
+                if config['save_file']:
+                    await loop.run_in_executor(None, save_file, path, result)
+                    timer = config['time_to_live']
+                    await loop.run_in_executor(None, delete_file, path, timer)
+                break
 
     time_end = datetime.now()
     time_wait = time_end - time_start
