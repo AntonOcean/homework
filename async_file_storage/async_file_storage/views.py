@@ -87,12 +87,8 @@ async def search(request):
             params = {'request_from_node': 1}
             coroutines_list.append(download_wiki(url, params))
 
-        done, pending = await asyncio.wait(
-            coroutines_list,
-            return_when=asyncio.ALL_COMPLETED)
-
-        for res in done:
-            result = res.result()
+        for task in asyncio.as_completed(coroutines_list):
+            result = await task
             if result:
                 status_code = 200
                 if config['save_file']:
